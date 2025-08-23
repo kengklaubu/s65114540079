@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard | Easy Parking</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Kanit', sans-serif;
+        }
+
+        /* ✅ ทำให้ Sidebar มีความสูงเต็มจอ */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            /* เต็มความสูงของหน้าจอ */
+            width: 250px;
+            /* กำหนดความกว้างคงที่ */
+            background-color: #1F2937;
+            /* เทาเข้ม */
+            color: white;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2);
+        }
+
+        /* ✅ ขยับ Main Content ไปทางขวา */
+        .main-content {
+            margin-left: 250px;
+            width: calc(100% - 250px);
+            /* ลดขนาดให้เท่ากับ Sidebar */
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100">
+    {% load static %}
+
+    <!-- Sidebar -->
+    <aside class="sidebar flex flex-col">
+        <div class="p-6 text-2xl font-bold flex items-center">
+            <img src="{% static 'easypark/image/logo.png' %}" alt="Logo" class="h-8 mr-2">
+            Admin Panel
+        </div>
+        <nav class="flex-1">
+            <a href="#" class="block py-3 px-6 hover:bg-gray-700 flex items-center">
+                📊 <span class="ml-2">Dashboard</span>
+            </a>
+            <a href="{% url 'user_management' %}" class="block py-3 px-6 hover:bg-gray-700 flex items-center">
+                👥 <span class="ml-2">Users</span>
+            </a>
+            <!-- <a href="#" class="block py-3 px-6 hover:bg-gray-700 flex items-center">
+                ⚙️ <span class="ml-2">Settings</span>
+            </a> -->
+            <a href="{% url 'locations_management' %}" class="block py-3 px-6 hover:bg-gray-700 flex items-center">
+                📍 <span class="ml-2">Locations</span>
+            </a>
+        </nav>
+        <form action="{% url 'logout' %}" method="post" class="p-6">
+            {% csrf_token %}
+            <button type="submit" class="w-full bg-red-500 hover:bg-red-600 py-2 rounded-lg transition">🚪
+                Logout</button>
+        </form>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content flex flex-col">
+        <!-- Navbar -->
+        <header class="bg-white p-4 shadow flex justify-between items-center">
+            <h1 class="text-xl font-bold">📊 Dashboard</h1>
+            <div class="flex items-center space-x-4">
+                <span class="text-gray-700 font-medium">{{user.username}}</span>
+                
+            </div>
+        </header>
+
+        <!-- Dashboard Cards -->
+        <section class="p-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-white p-6 rounded-lg shadow-md flex items-center">
+                <span class="text-4xl">👥</span>
+                <div class="ml-4">
+                    <div class="text-gray-700 text-lg">Total Users</div>
+                    <div class="text-3xl font-bold">{{ total_users }}</div>
+                </div>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-md flex items-center">
+                <span class="text-4xl">📍</span>
+                <div class="ml-4">
+                    <div class="text-gray-700 text-lg">Total Locations</div>
+                    <div class="text-3xl font-bold">{{ total_locations }}</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Users Table -->
+        <section class="p-6">
+            <h2 class="text-xl font-bold mb-4">👥 User List</h2>
+            <div class="bg-white p-4 rounded-lg shadow-md">
+                <!-- Search Bar -->
+                <div class="mb-4">
+                    <input type="text" id="search-user" placeholder="🔍 ค้นหาผู้ใช้..."
+                        class="w-full p-2 border rounded-lg shadow-sm">
+                </div>
+                <!-- ✅ ใช้ div ครอบ table และให้ Scrollbar ทำงาน -->
+                <div class="rounded-lg border overflow-y-auto max-h-96">
+                    <table class="w-full border-collapse table-fixed">
+                        <thead class="sticky top-0 bg-gray-700 text-white">
+                            <tr>
+                                <th class="border p-2 w-1/6">ID</th>
+                                <th class="border p-2 w-1/3">UserName</th>
+                                <th class="border p-2 w-1/3">Email</th>
+                            </tr>
+                        </thead>
+                        <tbody id="user-table">
+                            {% for user in users %}
+                            <tr class="bg-gray-100 hover:bg-gray-200 transition">
+                                <td class="border p-2 text-center">{{ user.id }}</td>
+                                <td class="border p-2 text-center">{{ user.username }}</td>
+                                <td class="border p-2 text-center">{{ user.email }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="3" class="text-center p-4 text-gray-500">❌ ไม่มีข้อมูลผู้ใช้</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+
+    </main>
+
+    <!-- JavaScript -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const searchInput = document.getElementById('search-user');
+            const userTable = document.getElementById('user-table');
+
+            searchInput.addEventListener('input', function () {
+                const searchValue = searchInput.value.toLowerCase();
+                const rows = userTable.querySelectorAll('tr');
+
+                rows.forEach(row => {
+                    const username = row.cells[1]?.textContent.toLowerCase();
+                    const email = row.cells[2]?.textContent.toLowerCase();
+
+                    if (username.includes(searchValue) || email.includes(searchValue)) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            });
+        });
+    </script>
+
+</body>
+
+</html>

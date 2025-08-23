@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manager Dashboard | Easy Parking</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+        body {
+            font-family: 'Kanit', sans-serif;
+        }
+
+        /* #roi-background {
+            width: 100%;
+            height: auto;
+            max-width: 1920px;
+            max-height: 1080px;
+        } */
+    </style>
+</head>
+
+<body class="bg-gray-100">
+    {% load static %}
+    <!-- Navbar -->
+    <nav class="bg-gray-800 p-4 shadow-md">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="text-white font-bold text-xl flex items-center">
+                <img src="{% static 'easypark/image/logo.png' %}" alt="Easy Parking Logo" class="h-8 mr-2">
+                EasyPark
+            </div>
+            <div class="flex items-center space-x-4">
+                <span class="text-white">👤 {{ request.user.username }}</span>
+                <a href="{% url 'profile' %}" class="text-white hover:underline">โปรไฟล์</a>
+                <a href="{% url 'manager_add_location' %}" class="text-white hover:underline">เพิ่มสถานที่</a>
+                <a href="{% url 'manager_location_selection' %}" class="text-white hover:underline">เลือกสถานที่</a>
+                <form action="{% url 'logout' %}" method="post">
+                    {% csrf_token %}
+                    <button type="submit"
+                        class="bg-red-500 text-white py-2 px-4 rounded-lg hover:bg-red-600 transition">
+                        🚪 ออกจากระบบ
+                    </button>
+                </form>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Dashboard Header -->
+    <div class="container mx-auto mt-8">
+        <h1 class="text-3xl font-bold text-gray-800 text-center mb-6">📊 Manager Dashboard</h1>
+        <h2 class="text-xl font-semibold text-center text-gray-600">📍 {{ current_location.name }} {{ current_location.floor }} </h2>
+    </div>
+
+    <!-- Reservation History -->
+    <div class="container mx-auto mt-8 bg-white p-6 rounded-lg shadow-lg">
+        <h2 class="text-2xl font-bold text-gray-800 mb-4">📅 ประวัติการจอง</h2>
+        <table class="min-w-full table-auto border-collapse shadow-md rounded-lg overflow-hidden">
+            <thead>
+                <tr class="bg-gray-700 text-white">
+                    <th class="p-3">ID</th>
+                    <th class="p-3">ผู้ใช้</th>
+                    <th class="p-3">ช่องจอด</th>
+                    <th class="p-3">สถานะ</th>
+                    <th class="p-3">วันที่จอง</th>
+                    <th class="p-3">สถานที่</th>
+                    <th class="p-3">การดำเนินการ</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for booking in bookings %}
+                <tr class="border-b border-gray-300 text-center">
+                    <td class="p-3">{{ booking.id }}</td>
+                    <td class="p-3">{{ booking.user.username }}</td>
+                    <td class="p-3 font-semibold text-blue-600">#{{ booking.parking_spot.spot_number }}</td>
+                    <td class="p-3">
+                        <span class="px-3 py-1 rounded-md text-white 
+    {% if booking.status == 'completed' %} bg-green-500 
+    {% elif booking.status == 'active' %} bg-yellow-500 
+    {% elif booking.status == 'pending' %} bg-blue-500 
+    {% else %} bg-red-500 {% endif %}">
+                            {{ booking.status }}
+                        </span>
+                    </td>
+                    <td class="p-3">{{ booking.reservation_date }}</td>
+                    <td class="p-3">{{ booking.parking_spot.location.name }}</td>
+                    <td class="p-3">
+                        <a href="{% url 'cancel_booking' booking.id %}" class="text-red-500 hover:underline">❌
+                            ยกเลิก</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center p-4 text-gray-500">❌ ไม่มีประวัติการจอง</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Parking Spot List -->
+    <div class="container mx-auto mt-8 bg-white p-6 rounded-lg shadow-lg">
+        <h2 class="text-2xl font-bold text-gray-800 mb-4">🅿️ รายการช่องจอด</h2>
+
+        <!-- ปุ่มเพิ่มช่องจอด -->
+
+        <button id="add-spot-btn"
+            class="mb-4 bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition">
+            ➕ เพิ่มช่องจอด
+        </button>
+
+
+        <!-- ✅ Modal สำหรับลาก ROIs -->
+        <div id="roi-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+            <div class="bg-white p-6 rounded-lg shadow-lg w-[600px]">
+                <h2 class="text-xl font-bold mb-4 text-gray-800">📌 ขยับกรอบ ROIs</h2>
+                <div class="border border-gray-400 p-4 relative">
+                    <p id="image-size">ขนาดภาพ: กำลังโหลด...</p>
+                    <svg id="roi-svg" viewBox="0 0 600 400" preserveAspectRatio="xMidYMid meet"
+                        class="border border-gray-300 w-full h-auto">
+                        <image id="roi-background" width="100%" height="100%" href="" />
+                        {% for roi in rois %}
+                        <rect id="roi-{{ roi.id }}" class="draggable-roi" x="{{ roi.x_position }}"
+                            y="{{ roi.y_position }}" width="{{ roi.width }}" height="{{ roi.height }}"
+                            fill="rgba(0, 0, 255, 0.5)" stroke="blue" stroke-width="2" data-id="{{ roi.id }}"
+                            data-name="{{ roi.name }}"></rect>
+
+                        {% endfor %}
+                    </svg>
+                </div>
+
+                <button id="close-roi-modal"
+                    class="mt-4 w-full bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600">
+                    ❌ ปิด
+                </button>
+            </div>
+        </div>
+
+
+
+
+        <!-- โมดอลสำหรับเพิ่มช่องจอด -->
+        <div id="add-spot-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+            <div class="bg-white p-6 rounded-lg shadow-lg w-96">
+                <h3 class="text-xl font-bold mb-4 text-gray-800">เพิ่มช่องจอดใหม่</h3>
+                <form id="add-spot-form" method="POST" action="{% url 'add_parking_spot' location.id %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="location_id" value="{{ location.id }}">
+
+                    <label for="spot_number" class="block text-gray-700 font-semibold">หมายเลขช่องจอด:</label>
+                    <input type="number" id="spot_number" name="spot_number" required
+                        class="w-full px-4 py-2 border rounded-md">
+
+                    <p id="error-message" class="text-red-500 text-sm mt-2"></p> <!-- ✅ แสดงข้อความผิดพลาด -->
+
+                    <button type="submit"
+                        class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-500 transition">
+                        ✅ เพิ่มช่องจอด
+                    </button>
+                </form>
+
+                <!-- ปุ่มปิดโมดอล -->
+                <button id="close-modal"
+                    class="mt-4 w-full bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition">
+                    ❌ ยกเลิก
+                </button>
+            </div>
+        </div>
+        <!-- ✅ Toast Notification -->
+        <div id="toast-container" class="fixed top-4 right-4 space-y-2 z-50"></div>
+
+        <!-- ✅ Modal แสดงข้อมูล ROIs -->
+        <div id="roi-info-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+            <div class="bg-white p-6 rounded-lg shadow-lg w-96">
+                <h2 class="text-xl font-bold mb-4 text-gray-800">📌 ข้อมูล ROIs</h2>
+
+                <label class="block text-gray-700 font-semibold">ชื่อ ROI:</label>
+                <input type="text" id="roi-name" class="w-full px-4 py-2 border rounded-md">
+
+                <label class="block text-gray-700 font-semibold mt-2">ตำแหน่ง X:</label>
+                <input type="number" id="roi-x" class="w-full px-4 py-2 border rounded-md">
+
+                <label class="block text-gray-700 font-semibold mt-2">ตำแหน่ง Y:</label>
+                <input type="number" id="roi-y" class="w-full px-4 py-2 border rounded-md">
+
+                <label class="block text-gray-700 font-semibold mt-2">ความกว้าง:</label>
+                <input type="number" id="roi-width" class="w-full px-4 py-2 border rounded-md">
+
+                <label class="block text-gray-700 font-semibold mt-2">ความสูง:</label>
+                <input type="number" id="roi-height" class="w-full px-4 py-2 border rounded-md">
+
+                <button id="save-roi-info"
+                    class="mt-4 w-full bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition">
+                    ✅ บันทึก
+                </button>
+
+                <button id="close-roi-info"
+                    class="mt-2 w-full bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition">
+                    ❌ ปิด
+                </button>
+            </div>
+        </div>
+
+        <!-- ปุ่มแก้ไขรูปภาพ -->
+        <button id="edit-image-btn"
+            class="mt-4 bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 transition">
+            ✏️ แก้ไขรูปภาพ
+        </button>
+
+        <!-- Modal สำหรับอัปโหลดรูปใหม่ -->
+        <div id="edit-image-modal"
+            class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center hidden">
+            <div class="bg-white rounded-lg p-6 w-full max-w-lg shadow-lg">
+                <h2 class="text-xl font-bold mb-4">🖼️ แก้ไขรูปภาพที่จอดรถ</h2>
+
+                <!-- แสดงรูปภาพปัจจุบัน -->
+                <div class="mb-4">
+                    <p class="text-gray-700">📷 รูปภาพปัจจุบัน:</p>
+                    {% if location.image %}
+                    <img id="current-image" src="{{ location.image.url }}" alt="Current Image" class="mt-2 max-h-48">
+                    {% else %}
+                    <div class="mt-2 p-4 border border-dashed border-gray-300 text-center text-gray-500">
+                        ไม่มีรูปภาพ
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- อัปโหลดรูปภาพใหม่ -->
+                <div class="mb-4">
+                    <label for="new-image" class="block text-gray-700 font-semibold">📤 เลือกรูปภาพใหม่:</label>
+                    <input type="file" id="new-image" accept="image/*" class="w-full px-3 py-2 border rounded-lg">
+                </div>
+
+                <!-- ปุ่มบันทึกและปิด Modal -->
+                <div class="flex justify-end space-x-2">
+                    <button id="cancel-btn" class="bg-gray-400 text-white px-4 py-2 rounded-lg hover:bg-gray-500">❌
+                        ยกเลิก</button>
+                    <button id="save-image-btn" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">💾
+                        บันทึก</button>
+                </div>
+            </div>
+        </div>
+
+
+
+
+        <!-- ตารางรายการช่องจอด -->
+        <table class="min-w-full table-auto border-collapse shadow-md rounded-lg overflow-hidden">
+            <thead>
+                <tr class="bg-gray-700 text-white">
+                    <th class="p-3">ช่องจอด</th>
+                    <th class="p-3">สถานะ</th>
+                    <th class="p-3">ผู้จอง</th>
+                    <th class="p-3">การดำเนินการ</th>
+                </tr>
+            </thead>
+            <tbody id="parking-spot-body">
+                {% for spot in parking_spots %}
+                <tr class="border-b border-gray-300 text-center">
+                    <td class="p-3 font-semibold text-blue-600">#{{ spot.spot_number }}</td>
+                    <td class="p-3 status-text">
+                        <span
+                            class="px-3 py-1 rounded-md text-white {% if spot.is_available %} bg-green-500 {% else %} bg-red-500 {% endif %}">
+                            {{ spot.is_available|yesno:"✅ ว่าง,❌ ไม่ว่าง" }}
+                        </span>
+                    </td>
+                    <td class="p-3">{{ spot.reserved_by.username|default:"-" }}</td>
+                    <td class="p-3">
+                        <button
+                            class="suspend-btn bg-blue-500 text-white px-3 py-1 rounded-lg hover:bg-blue-600 transition"
+                            data-spot-id="{{ spot.id }}"
+                            data-action="{% if spot.is_available %}suspend{% else %}restore{% endif %}">
+                            {% if spot.is_available %}🚫 ระงับ{% else %}✅ คืนสถานะ{% endif %}
+                        </button>
+                        <button
+                            class="delete-btn bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600 transition ml-2"
+                            data-spot-id="{{ spot.id }}">
+                            🗑️ ลบ
+                        </button>
+                    </td>
+
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center p-4 text-gray-500">❌ ไม่มีช่องจอด</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+
+        <table class="min-w-full table-auto border-collapse shadow-md rounded-lg overflow-hidden">
+            <div class="flex w-full justify-around">
+                <!-- ฝั่งแสดงรูป (ที่จอดรถ) -->
+                <div class="w-1/2 mt-8 max-w-2xl mx-auto bg-gray-300 p-6 rounded-lg shadow-xl">
+                    <svg id="parking-map" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 300" width="100%"
+                        height="100%">
+                        <image href="{{ location.image.url }}" x="0" y="0" width="500" height="300" />
+                        {% for spot in parking_spots %}
+                        <g id="spot-{{ spot.id }}" data-spot-id="{{ spot.id }}" class="draggable"
+                            transform="translate({{ spot.x_position }}, {{ spot.y_position }})">
+                            <!-- ที่จอดว่าง -->
+                            <path id="spot-path-green-{{ spot.id }}" fill="#22db14"
+                                d="M64 80c-8.8 0-16 7.2-16 16l0 320c0 8.8 7.2 16 16 16l320 0c8.8 0 16-7.2 16-16l0-320c0-8.8-7.2-16-16-16L64 80zM0 96C0 60.7 28.7 32 64 32l320 0c35.3 0 64 28.7 64 64l0 320c0 35.3-28.7 64-64 64L64 480c-35.3 0-64-28.7-64-64L0 96zM337 209L209 337c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47L303 175c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z"
+                                transform="scale(0.04)" style="cursor: grab;">
+                            </path>
+                            <!-- ที่จอดไม่ว่าง -->
+                            <path id="spot-path-red-{{ spot.id }}" fill="#ff0000" style="display: none;"
+                                d="M256 48a208 208 0 1 1 0 416 208 208 0 1 1 0-416zm0 464A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM175 175c-9.4 9.4-9.4 24.6 0 33.9l47 47-47 47c-9.4 9.4-9.4 24.6 0 33.9s24.6 9.4 33.9 0l47-47 47 47c-9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-47-47 47-47c-9.4-9.4 9.4-24.6 0-33.9s-24.6-9.4-33.9 0l-47 47-47-47c-9.4-9.4-24.6-9.4-33.9 0z"
+                                transform="scale(0.04)" style="cursor: grab;">
+                            </path>
+                        </g>
+                        {% endfor %}
+                    </svg>
+
+                </div>
+            </div>
+        </table>
+
+        <!-- ✅ Live Camera Feed -->
+        <div class=" container mx-auto mt-8 bg-white p-6 rounded-lg shadow-lg max-w-3xl">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">📷 Live Camera Feed</h2>
+            <button id="edit-roi-btn" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition">
+                ✅ ขยับช่อง rois
+            </button>
+            <div class="overflow-hidden rounded-lg border border-gray-300 bg-gray-100 flex justify-center">
+                <img id="live-stream" class="w-full max-w-2xl h-90 object-cover rounded-lg" src="" alt="Live Stream">
+            </div>
+        </div>
+
+
+
+
+
+        <!-- ✅ JavaScript -->
+        <script>
+
+            // เปิด Modal
+            document.getElementById('edit-image-btn').addEventListener('click', () => {
+                document.getElementById('edit-image-modal').classList.remove('hidden');
+            });
+
+            // ปิด Modal
+            document.getElementById('cancel-btn').addEventListener('click', () => {
+                document.getElementById('edit-image-modal').classList.add('hidden');
+            });
+
+            // อัปโหลดรูปภาพใหม่
+            document.getElementById('save-image-btn').addEventListener('click', () => {
+                const fileInput = document.getElementById('new-image');
+                const file = fileInput.files[0];
+
+                if (!file) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'กรุณาเลือกรูปภาพ',
+                        text: 'คุณต้องเลือกรูปภาพก่อนทำการอัปโหลด!',
+                    });
+                    return;
+                }
+
+                // 🟢 ตรวจสอบประเภทไฟล์
+                const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+                if (!allowedTypes.includes(file.type)) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'ไฟล์ไม่ถูกต้อง!',
+                        text: 'กรุณาอัปโหลดไฟล์รูปภาพเท่านั้น (JPEG, JPG, PNG, GIF)',
+                    });
+                    fileInput.value = '';  // ล้างค่าไฟล์
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('image', file);
+                formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');  // สำหรับป้องกัน CSRF
+
+                fetch("{% url 'update_parking_image' location.id %}", {
+                    method: 'POST',
+                    body: formData
+                }).then(response => {
+                    if (response.ok) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'สำเร็จ!',
+                            text: '✅ รูปภาพอัปโหลดเรียบร้อยแล้ว!',
+                        }).then(() => {
+                            location.reload();  // รีเฟรชหน้าเพื่อแสดงรูปใหม่
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'เกิดข้อผิดพลาด!',
+                            text: '❌ ไม่สามารถอัปโหลดได้!',
+                        });
+                    }
+                }).catch(error => {
+                    console.error('Error:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'เกิดข้อผิดพลาด!',
+                        text: '❌ มีบางอย่างผิดพลาด!',
+                    });
+                });
+            });
+
+
+
+
+            function adjustROIs() {
+                const svg = document.getElementById('roi-svg');
+                const image = document.getElementById('roi-background');
+                const originalWidth = image_width ?? 1920;
+                const originalHeight = image_height ?? 1080;
+
+
+                const currentWidth = image.clientWidth;
+                const currentHeight = image.clientHeight;
+
+                document.querySelectorAll('.draggable-roi').forEach(rect => {
+                    const originalX = parseFloat(rect.getAttribute('data-original-x'));
+                    const originalY = parseFloat(rect.getAttribute('data-original-y'));
+                    const originalWidthRect = parseFloat(rect.getAttribute('data-original-width'));
+                    const originalHeightRect = parseFloat(rect.getAttribute('data-original-height'));
+
+                    // ปรับตำแหน่งและขนาดตามอัตราส่วน
+                    rect.setAttribute('x', (originalX * currentWidth) / originalWidth);
+                    rect.setAttribute('y', (originalY * currentHeight) / originalHeight);
+                    rect.setAttribute('width', (originalWidthRect * currentWidth) / originalWidth);
+                    rect.setAttribute('height', (originalHeightRect * currentHeight) / originalHeight);
+                });
+            }
+
+            window.addEventListener('load', adjustROIs);
+            window.addEventListener('resize', adjustROIs);
+
+
+
+            // เรียกใช้เมื่อโหลดหน้า
+            window.addEventListener('load', adjustROIs);
+            window.addEventListener('resize', adjustROIs);
+
+            document.addEventListener("DOMContentLoaded", function () {
+                const roiInfoModal = document.getElementById("roi-info-modal");
+                const roiNameInput = document.getElementById("roi-name");
+                const roiXInput = document.getElementById("roi-x");
+                const roiYInput = document.getElementById("roi-y");
+                const roiWidthInput = document.getElementById("roi-width");
+                const roiHeightInput = document.getElementById("roi-height");
+                let selectedROI = null;
+
+                function showROIInfo(event) {
+                    // ดักจับคลิกเฉพาะที่ ROI เท่านั้น
+                    if (!event.target.classList.contains("draggable-roi")) return;
+
+                    selectedROI = event.target;
+                    if (!selectedROI) return;
+
+                    console.log(selectedROI.outerHTML);
+                    console.log("data-name:", selectedROI.getAttribute("data-name"));
+
+                    // ✅ ดึงข้อมูล ROI มาแสดงในโมดัล
+                    roiNameInput.value = selectedROI.getAttribute("data-name") || "ไม่มีชื่อ";
+                    roiXInput.value = selectedROI.getAttribute("x") || "";
+                    roiYInput.value = selectedROI.getAttribute("y") || "";
+                    roiWidthInput.value = selectedROI.getAttribute("width") || "";
+                    roiHeightInput.value = selectedROI.getAttribute("height") || "";
+
+                    // ✅ แสดงโมดัล
+                    roiInfoModal.classList.remove("hidden");
+                }
+
+                document.getElementById("save-roi-info").addEventListener("click", function () {
+                    if (selectedROI) {
+                        // ✅ อัปเดตค่าจาก input ไปยัง <rect>
+                        selectedROI.setAttribute("data-name", roiNameInput.value); // อัปเดตชื่อ ROI
+                        selectedROI.setAttribute("x", roiXInput.value);
+                        selectedROI.setAttribute("y", roiYInput.value);
+                        selectedROI.setAttribute("width", roiWidthInput.value);
+                        selectedROI.setAttribute("height", roiHeightInput.value);
+
+                        roiInfoModal.classList.add("hidden");
+
+                        // ✅ ส่งข้อมูลอัปเดตไปยัง backend
+                        fetch(`/update_roi_position/`, {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]").value
+                            },
+                            body: JSON.stringify({
+                                roi_id: selectedROI.getAttribute("data-id"),
+                                name: roiNameInput.value, // ✅ เพิ่มชื่อ ROI
+                                x_position: roiXInput.value,
+                                y_position: roiYInput.value,
+                                width: roiWidthInput.value,
+                                height: roiHeightInput.value
+                            })
+                        });
+                    }
+                });
+
+                document.getElementById("close-roi-info").addEventListener("click", function () {
+                    roiInfoModal.classList.add("hidden");
+                });
+
+                // ✅ เปลี่ยนจาก roi-svg เป็นการตรวจจับ ROI ที่ถูกคลิกโดยตรง
+                document.querySelectorAll(".draggable-roi").forEach(roi => {
+                    roi.addEventListener("click", showROIInfo);
+                });
+            });
+
+
+            document.addEventListener("DOMContentLoaded", function () {
+                const roiModal = document.getElementById("roi-modal");
+                const roiSvg = document.getElementById("roi-svg");
+                const roiBackground = document.getElementById("roi-background");
+                const imageSizeDisplay = document.getElementById("image-size");
+
+                document.getElementById("edit-roi-btn").addEventListener("click", function () {
+                    fetch(`/capture_frame/{{ location.id }}/`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                const img = new Image();
+                                img.src = data.image_url;
+
+                                // ✅ เมื่อโหลดรูปสำเร็จ ให้ดึงขนาดรูป
+                                img.onload = function () {
+                                    const width = img.naturalWidth;
+                                    const height = img.naturalHeight;
+                                    roiBackground.setAttribute("href", data.image_url);
+                                    roiSvg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+                                    imageSizeDisplay.textContent = `ขนาดภาพ: ${width} x ${height}`;
+                                    roiModal.classList.remove("hidden");
+                                };
+
+                                img.onerror = function () {
+                                    console.error("ไม่สามารถโหลดรูปภาพได้");
+                                };
+                            } else {
+                                console.error("Error capturing frame:", data.error);
+                            }
+                        })
+                        .catch(error => console.error("Fetch error:", error));
+                });
+
+                document.getElementById("close-roi-modal").addEventListener("click", function () {
+                    roiModal.classList.add("hidden");
+                });
+            });
+
+
+
+            document.addEventListener("DOMContentLoaded", function () {
+                const svgROI = document.getElementById("roi-svg");
+                let selectedElement = null;
+                let offset = { x: 0, y: 0 };
+
+                function startDragROI(event) {
+                    if (event.target.classList.contains("draggable-roi")) {
+                        selectedElement = event.target;
+                        offset.x = event.clientX - selectedElement.getBBox().x;
+                        offset.y = event.clientY - selectedElement.getBBox().y;
+
+                        svgROI.addEventListener("mousemove", drag);
+                        svgROI.addEventListener("mouseup", endDragROI);
+                    }
+                }
+
+                function drag(event) {
+                    if (selectedElement) {
+                        let x = event.clientX - offset.x;
+                        let y = event.clientY - offset.y;
+                        selectedElement.setAttribute("x", x);
+                        selectedElement.setAttribute("y", y);
+                    }
+                }
+
+                function endDragROI() {
+                    if (selectedElement) {
+                        let roiId = selectedElement.getAttribute("data-id");
+                        let x = selectedElement.getAttribute("x");
+                        let y = selectedElement.getAttribute("y");
+
+                        fetch(`/update_roi_position/`, {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]").value
+                            },
+                            body: JSON.stringify({
+                                roi_id: roiId,
+                                x_position: x,
+                                y_position: y
+                            })
+                        });
+
+                        selectedElement = null;
+                        svgROI.removeEventListener("mousemove", drag);
+                        svgROI.removeEventListener("mouseup", endDragROI);
+                    }
+                }
+
+                svgROI.addEventListener("mousedown", startDragROI);
+            });
+
+
+            // ✅ เปิด-ปิด Modal ขยับ ROIs
+            document.getElementById("edit-roi-btn").addEventListener("click", function () {
+                document.getElementById("roi-modal").classList.remove("hidden");
+                svgROI.addEventListener("mousedown", startDragROI);
+            });
+
+            document.getElementById("close-roi-modal").addEventListener("click", function () {
+                document.getElementById("roi-modal").classList.add("hidden");
+                svgROI.removeEventListener("mousedown", startDragROI);
+            });
+
+
+
+            function fetchParkingStatus() {
+                console.log("🚗 กำลังดึงสถานะที่จอดรถ...");
+
+                fetch("{% url 'get_parking_status' %}?location_id={{ location.id }}")
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log("✅ ข้อมูลที่จอดรถที่ได้รับ:", data);
+
+                        data.forEach(function (spot) {
+                            let pathGreen = document.getElementById(`spot-path-green-${spot.id}`);
+                            let pathRed = document.getElementById(`spot-path-red-${spot.id}`);
+
+                            if (!pathGreen || !pathRed) {
+                                console.warn(`❌ ไม่พบ SVG สำหรับที่จอด spot-${spot.id}`);
+                                return;
+                            }
+
+                            // ✅ ตรวจสอบสถานะที่จอด แล้วอัปเดตสี
+                            if (spot.is_available) {
+                                pathGreen.style.display = "block";  // แสดงสีเขียว
+                                pathRed.style.display = "none";     // ซ่อนสีแดง
+                            } else {
+                                pathGreen.style.display = "none";   // ซ่อนสีเขียว
+                                pathRed.style.display = "block";    // แสดงสีแดง
+                            }
+                        });
+                    })
+                    .catch(error => console.error("❌ เกิดข้อผิดพลาดในการดึงข้อมูล:", error));
+            }
+
+            // ✅ อัปเดตสถานะที่จอดรถทุกๆ 5 วินาที
+            setInterval(fetchParkingStatus, 1000);
+
+
+
+
+
+
+
+
+            document.addEventListener("DOMContentLoaded", function () {
+                const svg = document.getElementById("parking-map");
+
+                let selectedElement = null;
+                let offset = { x: 0, y: 0 };
+
+                function startDrag(event) {
+                    if (event.target.closest(".draggable")) {
+                        selectedElement = event.target.closest(".draggable");
+                        let transform = selectedElement.getAttribute("transform");
+                        let matches = /translate\(([^,]+),\s*([^)]+)\)/.exec(transform);
+                        let x = parseFloat(matches[1]);
+                        let y = parseFloat(matches[2]);
+
+                        offset.x = event.clientX - x;
+                        offset.y = event.clientY - y;
+
+                        svg.addEventListener("mousemove", drag);
+                        svg.addEventListener("mouseup", endDrag);
+                    }
+                }
+
+                function drag(event) {
+                    if (selectedElement) {
+                        let x = event.clientX - offset.x;
+                        let y = event.clientY - offset.y;
+                        selectedElement.setAttribute("transform", `translate(${x},${y})`);
+                    }
+                }
+
+                function endDrag() {
+                    if (selectedElement) {
+                        let spotId = selectedElement.getAttribute("data-spot-id");
+                        let transform = selectedElement.getAttribute("transform");
+                        let matches = /translate\(([^,]+),\s*([^)]+)\)/.exec(transform);
+                        let newX = parseFloat(matches[1]);
+                        let newY = parseFloat(matches[2]);
+
+                        // ✅ บันทึกค่าตำแหน่งใหม่ลงฐานข้อมูลผ่าน AJAX
+                        fetch(`/update_parking_spot_position/`, {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]").value
+                            },
+                            body: JSON.stringify({
+                                spot_id: spotId,
+                                x_position: newX,
+                                y_position: newY
+                            })
+                        })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    console.log("✅ ตำแหน่งช่องจอดอัปเดตสำเร็จ!");
+                                } else {
+                                    console.error("❌ ไม่สามารถบันทึกตำแหน่งใหม่ได้:", data.error);
+                                }
+                            });
+
+                        selectedElement = null;
+                        svg.removeEventListener("mousemove", drag);
+                        svg.removeEventListener("mouseup", endDrag);
+                    }
+                }
+
+                svg.addEventListener("mousedown", startDrag);
+            });
+
+
+
+
+
+
+            document.addEventListener("DOMContentLoaded", function () {
+                const tbody = document.getElementById('parking-spot-body');
+
+                tbody.addEventListener("click", function (e) {
+                    // ✅ ระงับ/คืนสถานะ ช่องจอด
+                    if (e.target.classList.contains("suspend-btn")) {
+                        e.preventDefault();
+                        const button = e.target;
+                        const spotId = button.getAttribute("data-spot-id");
+                        const action = button.getAttribute("data-action");
+                        suspendRestoreSpot(spotId, action, button);
+                    }
+
+                    // ✅ ลบช่องจอด
+                    if (e.target.classList.contains("delete-btn")) {
+                        e.preventDefault();
+                        const button = e.target;
+                        const spotId = button.getAttribute("data-spot-id");
+
+                        showConfirmationModal("❗ คุณแน่ใจหรือไม่ว่าต้องการลบช่องจอดนี้?", () => {
+                            deleteParkingSpot(spotId, button);
+                        });
+                    }
+                });
+
+                function suspendRestoreSpot(spotId, action, button) {
+                    fetch(`/suspend_parking_spot/${spotId}/`, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]").value
+                        },
+                        body: JSON.stringify({ action, spot_id: spotId })
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                const row = button.closest("tr");
+                                const statusCell = row.querySelector(".status-text span");
+
+                                if (data.is_available) {
+                                    statusCell.classList.remove("bg-red-500");
+                                    statusCell.classList.add("bg-green-500");
+                                    statusCell.textContent = "✅ ว่าง";
+                                    button.textContent = "🚫 ระงับ";
+                                    button.setAttribute("data-action", "suspend");
+                                } else {
+                                    statusCell.classList.remove("bg-green-500");
+                                    statusCell.classList.add("bg-red-500");
+                                    statusCell.textContent = "❌ ไม่ว่าง";
+                                    button.textContent = "✅ คืนสถานะ";
+                                    button.setAttribute("data-action", "restore");
+                                }
+                            } else {
+                                console.error("Failed to update parking spot status:", data.error);
+                            }
+                        })
+                        .catch(error => console.error("❌ Error:", error));
+                }
+
+                function deleteParkingSpot(spotId, button) {
+                    fetch(`/delete_parking_spot/${spotId}/`, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]").value
+                        },
+                        body: JSON.stringify({ spot_id: spotId })
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                button.closest("tr").remove(); // ✅ ลบแถวออกจากตาราง
+                                showToast("✅ ลบช่องจอดเรียบร้อยแล้ว!", "success");
+                            } else {
+                                showToast("❌ ไม่สามารถลบช่องจอดได้: " + data.error, "error");
+                            }
+                        })
+                        .catch(error => console.error("❌ Error:", error));
+                    setInterval(fetchParkingStatus, 1000);
+                }
+
+                function showToast(message, type = "info") {
+                    const toastContainer = document.getElementById("toast-container");
+                    const toast = document.createElement("div");
+
+                    toast.className = `p-4 text-white rounded-lg shadow-lg transition-opacity duration-500 opacity-0 ${type === "success" ? "bg-green-500" : "bg-red-500"}`;
+                    toast.textContent = message;
+
+                    toastContainer.appendChild(toast);
+                    setTimeout(() => { toast.classList.remove("opacity-0"); }, 100);  // ✅ แสดง Toast
+                    setTimeout(() => { toast.classList.add("opacity-0"); }, 3000);   // ✅ ซ่อน Toast หลัง 3 วินาที
+                    setTimeout(() => { toast.remove(); }, 3500);                     // ✅ ลบ Toast ออกจาก DOM
+                }
+
+                function showConfirmationModal(message, onConfirm) {
+                    const modalHtml = `
+                <div id="confirm-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div class="bg-white p-6 rounded-lg shadow-lg max-w-sm text-center">
+                        <p class="text-lg font-semibold text-gray-800">${message}</p>
+                        <div class="mt-4 flex justify-around">
+                            <button id="confirm-btn" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition">
+                                ✅ ตกลง
+                            </button>
+                            <button id="cancel-btn" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition">
+                                ❌ ยกเลิก
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+                    document.body.insertAdjacentHTML("beforeend", modalHtml);
+
+                    document.getElementById("confirm-btn").addEventListener("click", function () {
+                        onConfirm();
+                        document.getElementById("confirm-modal").remove();
+                    });
+
+                    document.getElementById("cancel-btn").addEventListener("click", function () {
+                        document.getElementById("confirm-modal").remove();
+                    });
+                }
+            });
+
+
+
+            document.addEventListener("DOMContentLoaded", function () {
+                const addSpotBtn = document.getElementById("add-spot-btn");
+                const addSpotModal = document.getElementById("add-spot-modal");
+                const closeModalBtn = document.getElementById("close-modal");
+                const addSpotForm = document.getElementById("add-spot-form");
+                const parkingSpotBody = document.getElementById("parking-spot-body");
+                const errorMessage = document.getElementById("error-message");
+
+                // แสดง Modal
+                addSpotBtn.addEventListener("click", function () {
+                    addSpotModal.classList.remove("hidden");
+                    errorMessage.textContent = "";
+                });
+
+                // ซ่อน Modal
+                closeModalBtn.addEventListener("click", function () {
+                    addSpotModal.classList.add("hidden");
+                    addSpotForm.reset();
+                });
+
+                // ฟังก์ชันเพิ่มช่องจอดแบบ AJAX
+                addSpotForm.addEventListener("submit", function (event) {
+                    event.preventDefault();
+
+                    let formData = new FormData(addSpotForm);
+
+                    fetch(addSpotForm.action, {
+                        method: "POST",
+                        body: formData
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                let newRow = `
+                <tr class="border-b border-gray-300 text-center">
+                    <td class="p-3 font-semibold text-blue-600">#${data.spot_number}</td>
+                    <td class="p-3 status-text">
+                        <span class="px-3 py-1 rounded-md text-white bg-green-500">✅ ว่าง</span>
+                    </td>
+                    <td class="p-3">-</td>
+                    <td class="p-3">
+                        <button class="suspend-btn bg-blue-500 text-white px-3 py-1 rounded-lg hover:bg-blue-600 transition"
+                            data-spot-id="${data.spot_id}" data-action="suspend">
+                            🚫 ระงับ
+                        </button>
+                        <button
+                            class="delete-btn bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600 transition ml-2"
+                            data-spot-id="${data.spot_id}"data-action="delete-btn">
+                            🗑️ ลบ
+                        </button>
+                    </td>
+                </tr>`;
+
+                                parkingSpotBody.insertAdjacentHTML("beforeend", newRow);
+                                addSpotModal.classList.add("hidden");
+                                addSpotForm.reset();
+                            } else {
+                                errorMessage.textContent = "❌ " + data.error;
+                            }
+                        })
+                        .catch(error => console.error("❌ Error:", error));
+                });
+
+
+
+                // ✅ Live Camera Feed อัปเดตอัตโนมัติ
+                const liveStream = document.getElementById('live-stream');
+                liveStream.src = `/stream/{{ location.id }}/`;
+
+                document.addEventListener("change", function (event) {
+                    if (event.target.id === "location-select") {
+                        liveStream.src = `/stream/${event.target.value}/`;
+                    }
+                });
+            });
+            setInterval(fetchParkingStatus, 1000);
+        </script>
+
+
+</body>
+
+</html>

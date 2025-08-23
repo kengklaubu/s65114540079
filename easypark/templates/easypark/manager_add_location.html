@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เพิ่มสถานที่จอดรถ - Easy Parking</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Kanit', sans-serif;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 h-screen flex items-center justify-center">
+    {% load static %}
+
+    <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-lg">
+        <h2 class="text-3xl font-bold text-center mb-6 text-gray-800">➕ เพิ่มสถานที่จอดรถ</h2>
+
+        <form method="post" action="{% url 'manager_add_location' %}" enctype="multipart/form-data" class="space-y-4">
+            {% csrf_token %}
+
+            {% if form.errors %}
+            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                <strong class="font-bold">พบข้อผิดพลาด:</strong>
+                <ul class="mt-1 list-disc list-inside">
+                    {% for field in form %}
+                    {% if field.errors %}
+                    {% for error in field.errors %}
+                    <li>{{ field.label }}: {{ error }}</li>
+                    {% endfor %}
+                    {% endif %}
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            {% if messages %}
+            <div class="messages">
+                {% for message in messages %}
+                <div class="{% if message.tags == 'success' %}bg-green-100 border border-green-400 text-green-700{% else %}bg-red-100 border border-red-400 text-red-700{% endif %} px-4 py-3 rounded relative"
+                    role="alert">
+                    <span>{{ message }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <div class="space-y-4">
+                <!-- ชื่อสถานที่ -->
+                <div>
+                    <label for="{{ form.name.id_for_label }}"
+                        class="block mb-2 text-sm font-medium text-gray-900">ชื่อสถานที่</label>
+                    {{ form.name }}
+                    {% if form.name.errors %}
+                    <p class="text-red-500 text-xs italic">{{ form.name.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+            </div>
+            <label for="{{ form.floor.id_for_label }}" class="block mb-2 text-sm font-medium text-gray-900">ชั้น</label>
+            {{ form.floor }}
+            {% if form.floor.errors %}
+            <p class="text-red-500 text-xs italic">{{ form.floor.errors.0 }}</p>
+            {% endif %}
+
+            <!-- Slug -->
+    <div>
+        <label for="{{ form.slug.id_for_label }}" class="block mb-2 text-sm font-medium text-gray-900">Slug
+            (URL)</label>
+        {{ form.slug }}
+        <p class="text-gray-500 text-xs">หากว่างจะสร้างจากชื่อสถานที่อัตโนมัติ</p>
+        {% if form.slug.errors %}
+        <p class="text-red-500 text-xs italic">{{ form.slug.errors.0 }}</p>
+        {% endif %}
+    </div>
+
+    <!-- รายละเอียด -->
+    <div>
+        <label for="{{ form.description.id_for_label }}"
+            class="block mb-2 text-sm font-medium text-gray-900">รายละเอียด</label>
+        {{ form.description }}
+        {% if form.description.errors %}
+        <p class="text-red-500 text-xs italic">{{ form.description.errors.0 }}</p>
+        {% endif %}
+    </div>
+
+    <!-- จำนวนช่องจอด -->
+    <div class="grid grid-cols-2 gap-4">
+        <div>
+            <label for="{{ form.total_spots.id_for_label }}"
+                class="block mb-2 text-sm font-medium text-gray-900">จำนวนช่องจอดทั้งหมด</label>
+            {{ form.total_spots }}
+            {% if form.total_spots.errors %}
+            <p class="text-red-500 text-xs italic">{{ form.total_spots.errors.0 }}</p>
+            {% endif %}
+        </div>
+        <div>
+            <label for="{{ form.available_spots.id_for_label }}"
+                class="block mb-2 text-sm font-medium text-gray-900">จำนวนช่องจอดที่ว่าง</label>
+            {{ form.available_spots }}
+            {% if form.available_spots.errors %}
+            <p class="text-red-500 text-xs italic">{{ form.available_spots.errors.0 }}</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- URL กล้อง -->
+    <div>
+        <label for="{{ form.camera_url.id_for_label }}" class="block mb-2 text-sm font-medium text-gray-900">URL
+            กล้องวงจรปิด</label>
+        {{ form.camera_url }}
+        {% if form.camera_url.errors %}
+        <p class="text-red-500 text-xs italic">{{ form.camera_url.errors.0 }}</p>
+        {% endif %}
+    </div>
+
+    <!-- รูปภาพ -->
+    <div>
+        <label for="{{ form.image.id_for_label }}" class="block mb-2 text-sm font-medium text-gray-900">
+            รูปภาพ <span class="text-red-500">*</span> <span class="text-xs text-gray-500">(จำเป็นต้องใส่)</span>
+        </label>
+        {{ form.image }}
+        {% if form.image.errors %}
+        <p class="text-red-500 text-xs italic">{{ form.image.errors.0 }}</p>
+        {% endif %}
+    </div>
+
+    <button type="submit"
+        class="w-full bg-blue-600 text-white p-3 rounded-md hover:bg-blue-700 transition font-semibold text-lg">
+        ✅ เพิ่มสถานที่
+    </button>
+    </form>
+
+    {% if location %}
+    <a href="{% url 'manager_dashboard' location.id %}" class="text-blue-500 hover:underline font-semibold">
+        🔙 กลับไปแดชบอร์ด
+    </a>
+    {% else %}
+    <a href="{% url 'homepage' %}" class="text-blue-500 hover:underline font-semibold">
+        🔙 กลับไปหน้าหลัก
+    </a>
+    {% endif %}
+    </div>
+
+
+    
+
+
+    </div>
+</body>
+
+</html>

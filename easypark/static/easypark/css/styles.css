@@ -1,0 +1,92 @@
+.header .logo {
+    display: flex;
+    align-items: center;
+    margin-right: auto;
+    /* ให้โลโก้อยู่ซ้าย */
+}
+
+.header .user-icon {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+
+
+.map-container img {
+    width: 100%;
+    max-width: 600px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.parking-layout {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 300px;
+    background-color: white;
+    padding: 10px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+
+
+.parking-spot {
+    width: 50px;
+    height: 50px;
+    display: inline-block;
+    margin: 5px;
+    background-color: grey;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    font-weight: bold;
+    border-radius: 50%;
+    /* ทำให้มุมโค้งเต็มที่ */
+}
+
+
+.reserve-btn {
+    background-color: #4CAF50;
+    /* สีเขียว */
+    color: white;
+    padding: 10px 20px;
+    font-size: 16px;
+    border: none;
+    border-radius: 25px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.3s ease;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    /* เพิ่มเงา */
+}
+
+.reserve-btn:hover {
+    background-color: #45a049;
+    /* เปลี่ยนสีเมื่อ hover */
+    transform: scale(1.05);
+    /* ขยายปุ่มเล็กน้อยเมื่อ hover */
+}
+
+.reserve-btn:active {
+    transform: scale(0.95);
+    /* ลดขนาดปุ่มเล็กน้อยเมื่อถูกกด */
+}
+
+.reserve-btn:disabled {
+    background-color: grey;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+
+
+
+
+
+#details-container {
+    margin-top: 20px;
+}

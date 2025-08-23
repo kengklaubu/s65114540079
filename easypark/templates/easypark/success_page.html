@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <h1>การจองสำเร็จ</h1>
+    <p>คุณได้จองที่จอดรถเรียบร้อยแล้ว</p>
+    <p>ที่จอดรถของคุณคือ: {{ parking_lot }}</p>
+    <p>เวลาที่จอดรถของคุณคือ: {{ start_time }} ถึง {{ end_time }}</p>
+    <a href="{% url 'homepage' %}">กลับหน้าหลัก</a>
+</body>
+</html>

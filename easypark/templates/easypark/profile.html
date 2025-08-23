@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>โปรไฟล์ผู้ใช้ | Easy Parking</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Kanit', sans-serif;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100">
+
+    <!-- Header -->
+    <header class="bg-gray-800 text-white py-4">
+        <div class="container mx-auto flex justify-between items-center px-6">
+            <h1 class="text-2xl font-bold">โปรไฟล์ผู้ใช้</h1>
+            <form action="{% url 'logout' %}" method="post">
+                {% csrf_token %}
+                <button type="submit"
+                    class="bg-red-500 text-white py-2 px-4 rounded-lg hover:bg-red-600 transition flex items-center">
+                    🚪 ออกจากระบบ
+                </button>
+            </form>
+        </div>
+    </header>
+    <!-- Back Button -->
+    <div class="container mx-auto my-4">
+        <form action="{% url 'homepage' %}" method="get">
+            <button type="submit" class="bg-gray-500 text-white py-2 px-4 rounded-lg hover:bg-gray-600 transition">
+                🏠 หน้าหลัก
+            </button>
+        </form>
+    </div>
+
+
+    <!-- Profile Section -->
+    <div class="container mx-auto mt-10 bg-white p-8 shadow-lg rounded-lg max-w-3xl">
+        <div class="flex items-center mb-6">
+            <div>
+                <h2 class="text-2xl font-bold text-gray-800">{{ user.username }}</h2>
+                <p class="text-gray-600">บัญชีผู้ใช้ของคุณ</p>
+            </div>
+        </div>
+
+        <form method="post" action="{% url 'update_profile' %}">
+            {% csrf_token %}
+
+            <!-- First Name -->
+            <div class="mb-4">
+                <label for="first_name" class="block text-gray-700 font-semibold">ชื่อ:</label>
+                <input type="text" id="first_name" name="first_name" value="{{ user.first_name }}"
+                    class="w-full p-3 border border-gray-300 rounded-lg shadow-sm">
+            </div>
+
+            <!-- Last Name -->
+            <div class="mb-4">
+                <label for="last_name" class="block text-gray-700 font-semibold">นามสกุล:</label>
+                <input type="text" id="last_name" name="last_name" value="{{ user.last_name }}"
+                    class="w-full p-3 border border-gray-300 rounded-lg shadow-sm">
+            </div>
+
+            <!-- Email -->
+            <div class="mb-4">
+                <label for="email" class="block text-gray-700 font-semibold">อีเมล:</label>
+                <input type="email" id="email" name="email" value="{{ user.email }}"
+                    class="w-full p-3 border border-gray-300 rounded-lg shadow-sm">
+            </div>
+
+            <!-- Save Button -->
+            <button type="submit"
+                class="w-full bg-blue-500 text-white py-3 rounded-lg hover:bg-blue-600 transition font-semibold text-lg">
+                💾 บันทึกการเปลี่ยนแปลง
+            </button>
+        </form>
+    </div>
+
+
+
+
+
+    <div class="container mx-auto mt-10 bg-white p-8 shadow-lg rounded-lg max-w-4xl">
+        <h2 class="text-2xl font-bold text-gray-800 mb-4">📝 ประวัติการจอง</h2>
+        <table class="w-full border-collapse rounded-lg overflow-hidden shadow-md">
+            <thead>
+                <tr class="bg-gray-700 text-white">
+                    <th class="p-3 text-left">📍 สถานที่</th>
+                    <th class="p-3 text-left">🚗 ช่องจอด</th>
+                    <th class="p-3 text-left">📅 วันที่จอง</th>
+                    <th class="p-3 text-left">🔄 สถานะ</th>
+                    <th class="p-3 text-left">🗑️ ยกเลิก</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for booking in bookings %}
+                <tr class="border-b border-gray-300">
+                    <td class="p-3">{{ booking.parking_spot.location.name }}</td>
+                    <td class="p-3 font-semibold text-blue-600">#{{ booking.parking_spot.spot_number }}</td>
+                    <td class="p-3">{{ booking.reservation_date }}</td>
+                    <td class="p-3">
+                        <span class="px-3 py-1 rounded-md text-white 
+    {% if booking.status == 'completed' %} bg-green-500 
+    {% elif booking.status == 'active' %} bg-yellow-500 
+    {% elif booking.status == 'pending' %} bg-blue-500 
+    {% else %} bg-red-500 {% endif %}">
+                            {{ booking.status }}
+                        </span>
+                    </td>
+                    <td class="p-3">
+                        {% if booking.status == 'active' or booking.status == 'pending' %}
+                        <form method="post" action="{% url 'cancel_booking' booking.id %}">
+                            {% csrf_token %}
+                            <button type="submit" class="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600">
+                                ยกเลิก ❌
+                            </button>
+                        </form>
+                        {% else %}
+                        <span class="text-gray-400">-</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center p-4 text-gray-500">❌ ไม่มีประวัติการจอง</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+
+        </table>
+    </div>
+
+
+
+
+
+    <!-- Booking History Section
+    <div class="container mx-auto mt-10 bg-white p-8 shadow-lg rounded-lg max-w-4xl">
+        <h2 class="text-2xl font-bold text-gray-800 mb-4">📝 ประวัติการจอง</h2>
+        <table class="w-full border-collapse rounded-lg overflow-hidden shadow-md">
+            <thead>
+                <tr class="bg-gray-700 text-white">
+                    <th class="p-3 text-left">📍 สถานที่</th>
+                    <th class="p-3 text-left">🚗 ช่องจอด</th>
+                    <th class="p-3 text-left">📅 วันที่จอง</th>
+                    <th class="p-3 text-left">🔄 สถานะ</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for reservation in reservations %}
+                <tr class="border-b border-gray-300">
+                    <td class="p-3">{{ reservation.parking_spot.location.name }}</td>
+                    <td class="p-3 font-semibold text-blue-600">#{{ reservation.parking_spot.spot_number }}</td>
+                    <td class="p-3">{{ reservation.reservation_date }}</td>
+                    <td class="p-3">
+                        <span class="px-3 py-1 rounded-md text-white 
+                            {% if reservation.status == 'completed' %} bg-green-500 
+                            {% elif reservation.status == 'active' %} bg-yellow-500 
+                            {% else %} bg-red-500 {% endif %}">
+                            {{ reservation.status }}
+                        </span>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="text-center p-4 text-gray-500">❌ ไม่มีประวัติการจอง</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div> -->
+
+    <!-- Footer -->
+    <footer class="mt-10 bg-gray-800 text-white py-4 text-center">
+        <p>&copy; 2024 Easy Parking. All rights reserved.</p>
+    </footer>
+
+</body>
+
+</html>

@@ -1,0 +1,15 @@
+Django == 5.0.6
+openpyxl
+channels
+python-dotenv
+psycopg[binary]
+gunicorn
+whitenoise[brotli]
+requests
+django-cron
+apscheduler
+opencv-python
+torch
+Pillow
+pandas
+seaborn

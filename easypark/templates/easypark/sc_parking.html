@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    {% load static %}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>รายละเอียดสถานที่จอดรถ</title>
+    <link href="{% static 'css/styles.css' %}" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Kanit', sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background-color: #333;
+            color: white;
+            padding: 10px 20px;
+        }
+
+        .header .logo {
+            display: flex;
+            align-items: center;
+        }
+
+        .header .logo img {
+            height: 40px;
+            margin-right: 10px;
+        }
+
+        .header .logo h1 {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .header .nav-menu a {
+            color: white;
+            text-decoration: none;
+            margin-right: 15px;
+            font-size: 1rem;
+        }
+
+        .header .nav-menu a:hover {
+            text-decoration: underline;
+        }
+
+        .header .user-icon img {
+            height: 40px;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+
+        .container {
+            padding: 20px;
+        }
+
+        .map-container {
+            margin-bottom: 20px;
+        }
+
+        .map-container img {
+            width: 100%;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+</head>
+
+<body class="h-screen flex flex-col">
+    <!-- Header Section -->
+    <div class="header">
+        <div class="logo">
+            <img src="{% static 'easypark/image/logo.png' %}" alt="Easy Parking Logo">
+            <h1>Easy Parking</h1>
+        </div>
+        <div class="nav-menu">
+            <a href="{% url 'homepage' %}">หน้าหลัก</a>
+        </div>
+        <div class="user-icon">
+            <a href="{% url 'profile' %}">
+                <img src="{% static 'easypark/image/user_1.png' %}" alt="User Icon">
+            </a>
+        </div>
+    </div>
+    </div>
+    <style>
+        .container {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px;
+            padding: 10px;
+        }
+
+        .map-container {
+            flex: 1;
+            margin-right: 20px;
+        }
+
+        .map-container img {
+            width: 100%;
+            max-width: 550px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+
+
+        .back-button {
+            text-align: right;
+            margin-top: 20px;
+        }
+
+        .back-button a {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 4px;
+        }
+
+        .back-button a:hover {
+            background-color: #45a049;
+        }
+
+        #details-container {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.4);
+            z-index: 1000;
+            width: 90%;
+            max-width: 500px;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+        }
+
+        .close-btn {
+            float: right;
+            cursor: pointer;
+            background-color: red;
+            color: white;
+            padding: 5px 10px;
+            border: none;
+            border-radius: 5px;
+        }
+
+        .close-btn:hover {
+            background-color: darkred;
+        }
+
+        .reserve-btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .reserve-btn:hover {
+            background-color: #45a049;
+            transform: scale(1.05);
+        }
+
+        .reserve-btn:active {
+            transform: scale(0.95);
+
+        }
+
+        .reserve-btn:disabled {
+            background-color: grey;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .footer {
+            background-color: #1e293b;
+            color: white;
+            text-align: center;
+            padding: 10px 0;
+            margin-top: auto;
+            /* ดัน Footer ไปติดขอบล่าง */
+        }
+    </style>
+
+    <!-- ใส่ Modal Overlay และ Details Container ไว้ก่อนปิด </body> -->
+    <div id="modal-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden"></div>
+
+    <div id="details-container"
+        class="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white p-6 rounded-2xl shadow-xl max-w-lg w-full z-50 hidden">
+    </div>
+
+    <div class="flex w-full justify-around">
+        <!-- ฝั่งแสดงรูป (ที่จอดรถ) -->
+        <div class="w-1/2 mt-8 max-w-2xl mx-auto bg-white p-6 rounded-lg shadow-lg p-6 rounded-lg shadow-xl">
+            <h2 class="text-2xl font-bold mb-4 text-center">🅿️ รายละเอียดสถานที่จอดรถ</h2>
+            <svg id="parking-map" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 300" width="100%" height="100%">
+                <image href="{{location.image.url}}" x_position="0" y_position="0" width="500" height="300" />
+                {% for spot in spots %}
+                <g id="spot-{{ spot.id }}" data-spot-id="{{ spot.id }}"
+                    onclick="showSpotDetails(this.getAttribute('data-spot-id'))">
+                    <!-- Path สีเขียว (ที่จอดว่าง) -->
+                    <path id="spot-path-green-{{ spot.id }}" fill="#22db14"
+                        d="M64 80c-8.8 0-16 7.2-16 16l0 320c0 8.8 7.2 16 16 16l320 0c8.8 0 16-7.2 16-16l0-320c0-8.8-7.2-16-16-16L64 80zM0 96C0 60.7 28.7 32 64 32l320 0c35.3 0 64 28.7 64 64l0 320c0 35.3-28.7 64-64 64L64 480c-35.3 0-64-28.7-64-64L0 96zM337 209L209 337c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47L303 175c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z"
+                        transform="translate({{ spot.x_position }}, {{ spot.y_position }}) scale(0.05)">
+                    </path>
+
+                    <!-- Path สีแดง (ที่จอดไม่ว่าง) -->
+                    <path id="spot-path-red-{{ spot.id }}" fill="#ff0000" style="display: none;"
+                        d="M256 48a208 208 0 1 1 0 416 208 208 0 1 1 0-416zm0 464A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM175 175c-9.4 9.4-9.4 24.6 0 33.9l47 47-47 47c-9.4 9.4-9.4 24.6 0 33.9s24.6 9.4 33.9 0l47-47 47 47c-9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-47-47 47-47c-9.4-9.4 9.4-24.6 0-33.9s-24.6-9.4-33.9 0l-47 47-47-47c-9.4-9.4-24.6-9.4-33.9 0z"
+                        transform="translate({{ spot.x_position }}, {{ spot.y_position }}) scale(0.05)">
+                    </path>
+
+                    <!-- เพิ่ม Path สีเหลือง (กำลังดำเนินการ) -->
+                    <path id="spot-path-yellow-{{ spot.id }}" fill="#ffc107" style="display: none;"
+                        d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zm0-384c13.3 0 24 10.7 24 24V264c0 13.3-10.7 24-24 24s-24-10.7-24-24V152c0-13.3 10.7-24 24-24zM224 352a32 32 0 1 1 64 0 32 32 0 1 1 -64 0z"
+                        transform="translate({{ spot.x_position }}, {{ spot.y_position }}) scale(0.05)">
+                    </path>
+                </g>
+                {% endfor %}
+            </svg>
+        </div>
+
+        <!-- ฝั่ง Live Camera Feed -->
+        <div class="w-1/2 mt-8 max-w-2xl mx-auto bg-white p-6 rounded-lg shadow-lg p-6 rounded-lg shadow-xl">
+            <h2 class="text-2xl font-bold mb-4 text-center">🎥 Live Camera Feed</h2>
+            <div class="mb-6">
+                <label for="location-select" class="block text-base font-medium text-gray-600 mb-2">Select
+                    Location:</label>
+                <select id="location-select"
+                    class="block w-full border-gray-300 rounded-md shadow-sm p-3 text-gray-700">
+                    <option value="">Select a location</option>
+                    {% for loc in locations %}
+                    <option value="{{ loc.id }}" {% if loc == location %} selected {% endif %}>{{ loc.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- พื้นที่สำหรับแสดง Live Stream -->
+            <div class="overflow-hidden rounded-lg border border-gray-400 bg-gray-200">
+                <img id="live-stream" class="w-full h-80 object-cover" src="" alt="Live Stream">
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const liveStream = document.getElementById('live-stream');
+            const locationSelect = document.getElementById('location-select');
+
+            // ตั้งค่า default stream
+            const defaultStream = `/live/{{ location.id }}/`;
+            liveStream.src = defaultStream;
+
+            locationSelect.addEventListener('change', function () {
+                const locationId = this.value;
+                liveStream.src = locationId ? `/live/${locationId}/` : defaultStream;
+            });
+
+            // เรียกข้อมูลจอดรถเมื่อโหลดหน้า
+            fetchParkingStatus();
+        });
+
+
+        function fetchParkingStatus() {
+            console.log("Fetching parking status...");
+            const locationId = document.getElementById('location-select').value || "{{ location.id }}";
+
+            $.ajax({
+                url: "{% url 'get_parking_status' %}",
+                method: "GET",
+                data: { location_id: locationId },
+                success: function (data) {
+                    console.log("🚗 Parking status fetched:", data);
+
+                    data.forEach(function (spot) {
+                        console.log("📌 Spot data:", spot);
+
+                        const pathGreen = document.querySelector(`#spot-path-green-${spot.id}`);
+                        const pathRed = document.querySelector(`#spot-path-red-${spot.id}`);
+
+                        // เพิ่ม path สำหรับสถานะ pending (ถ้ามี)
+                        const pathYellow = document.querySelector(`#spot-path-yellow-${spot.id}`);
+
+                        if (!pathGreen || !pathRed) {
+                            console.warn(`❌ Path elements for spot-${spot.id} not found.`);
+                            return;
+                        }
+
+                        // กำหนดการแสดงผลตามสถานะ
+                        if (spot.status === 'pending') {
+                            // ถ้ามี path สำหรับ pending ให้แสดงมัน
+                            if (pathYellow) {
+                                pathGreen.style.display = "none";
+                                pathRed.style.display = "none";
+                                pathYellow.style.display = "block";
+                            } else {
+                                // ถ้าไม่มี path สำหรับ pending ให้แสดงสีแดงแทน
+                                pathGreen.style.display = "none";
+                                pathRed.style.display = "block";
+                            }
+                        } else if (spot.status === 'active' || !spot.is_available) {
+                            // แสดงสีแดงสำหรับที่จอดไม่ว่าง
+                            pathGreen.style.display = "none";
+                            pathRed.style.display = "block";
+                            if (pathYellow) pathYellow.style.display = "none";
+                        } else {
+                            // แสดงสีเขียวสำหรับที่จอดว่าง
+                            pathGreen.style.display = "block";
+                            pathRed.style.display = "none";
+                            if (pathYellow) pathYellow.style.display = "none";
+                        }
+                    });
+                },
+                error: function () {
+                    console.error("❌ Error fetching parking status");
+                }
+            });
+        }
+
+        // ✅ อัปเดตสถานะทุก 2 วินาที
+        setInterval(fetchParkingStatus, 5000);
+
+
+
+        function showSpotDetails(spotId) {
+            console.log(`🖱️ Clicked Spot ID: ${spotId}`);
+
+            if (!spotId) {
+                console.error("Spot ID is missing!");
+                return;
+            }
+
+            const locationId = document.getElementById('location-select').value || "{{ location.id }}";
+
+            console.log("Fetching details for Location ID:", locationId, "Spot ID:", spotId);
+
+            $.ajax({
+                url: "{% url 'get_spot_details' %}",
+                method: "GET",
+                data: { location_id: locationId, spot_id: spotId },
+                success: function (data) {
+                    console.log("Spot details fetched:", data);
+
+                    const detailsContainer = document.getElementById("details-container");
+                    if (!detailsContainer) {
+                        console.error("details-container not found in DOM!");
+                        return;
+                    }
+
+                    // กำหนดการแสดงผลตามสถานะ
+                    let statusDisplay = '';
+                    let actionButton = '';
+
+                    if (data.status === 'pending') {
+                        statusDisplay = `<span class="text-yellow-500 font-medium">⏳ กำลังดำเนินการ</span>`;
+                        actionButton = `<p class="text-yellow-500">⚠️ มีผู้ใช้กำลังดำเนินการจองที่นี่</p>`;
+                    } else if (data.status === 'active' || !data.is_available) {
+                        statusDisplay = `<span class="text-red-500 font-medium">❌ ไม่ว่าง</span>`;
+                        actionButton = `<p class="text-red-500">❌ ไม่สามารถจองได้</p>`;
+                    } else {
+                        statusDisplay = `<span class="text-green-500 font-medium">✅ ว่าง</span>`;
+                        actionButton = `<button class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition" onclick="goToReservePage(${data.spot_number})">🚀 จองที่นี่</button>`;
+                    }
+
+                    detailsContainer.innerHTML = `
+            <div class="space-y-4">
+                <h3 class="text-xl font-bold text-gray-800">🚗 ช่องจอดหมายเลข ${data.spot_number}</h3>
+                <p class="text-gray-600"><strong>สถานะ:</strong> ${statusDisplay}</p>
+                <p class="text-gray-600"><strong>จองโดย:</strong> ${data.reserved_by || "ไม่มีข้อมูล"}</p>
+
+                <div class="flex justify-end gap-2">
+                    ${actionButton}
+                    <button class="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition" onclick="closeModal()">❎ ปิด</button>
+                </div>
+            </div>
+            `;
+
+                    showModal();
+                },
+                error: function (xhr, status, error) {
+                    console.error("Error fetching spot details:", xhr.responseText);
+                }
+            });
+        }
+
+
+
+
+        function goToReservePage(spotNumber) {
+            const locationId = document.getElementById('location-select').value || "{{ location.id }}";
+            window.location.href = `/reserve_page/${spotNumber}/?location_id=${locationId}`;
+        }
+
+
+        function showModal() {
+            document.getElementById("modal-overlay").style.display = "block";
+            document.getElementById("details-container").style.display = "block";
+        }
+
+        function closeModal() {
+            document.getElementById("modal-overlay").style.display = "none";
+            document.getElementById("details-container").style.display = "none";
+        }
+
+        // ดึงข้อมูลอัตโนมัติทุก 2 วินาที
+        setInterval(fetchParkingStatus, 5000);
+    </script>
+
+
+
+    <footer class="footer">
+        <p>© 2025 Easy Parking. All Rights Reserved.</p>
+    </footer>
+
+</body>
+
+</html>
