@@ -20,7 +20,7 @@ services:
       DB_HOST: ${DB_HOST}
       DB_PORT: ${DB_PORT}
     ports:
-      - "${WEB_PORT}:${WEB_PORT}"
+      - "${WEB_PORT}:${WEB_PORT}"  # expose เฉพาะพอร์ต 10079 เท่านั้น
     depends_on:
       db:
         condition: service_healthy
@@ -38,14 +38,16 @@ services:
       retries: 20
     volumes:
       - pg_data:/var/lib/postgresql/data
-    ports:
-      - "${DB_PORT}:${DB_PORT}"  # เชื่อมต่อพอร์ตตามที่กำหนดใน .env
+    # ลบหรือไม่ระบุ `ports` หากไม่ต้องการ expose พอร์ต 5432
+    # ports:
+    #   - "${DB_PORT}:${DB_PORT}"
 
   redis:
     image: redis:7
     command: ["redis-server", "--appendonly", "yes"]
-    ports:
-      - "${REDIS_PORT}:${REDIS_PORT}"  # ถ้าใช้ Redis
+    # ลบหรือไม่ระบุ `ports` หากไม่ต้องการ expose Redis
+    # ports:
+    #   - "${REDIS_PORT}:${REDIS_PORT}"
     volumes:
       - redis_data:/data
 
