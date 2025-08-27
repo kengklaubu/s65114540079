@@ -12,7 +12,7 @@ services:
         python manage.py migrate --noinput && break;
         echo "DB not ready, retrying ($i/30)..."; sleep 2;
       done;
-      gunicorn easyparking.wsgi:application --bind 0.0.0.0:${WEB_PORT} --workers 3
+      gunicorn easyparking.wsgi:application --bind 0.0.0.0:8080 --workers 3
       '
     env_file: .env
     environment:
@@ -20,7 +20,7 @@ services:
       DB_HOST: ${DB_HOST}
       DB_PORT: ${DB_PORT}
     ports:
-      - "${WEB_PORT}:8000"  # expose เฉพาะพอร์ต 10079 เท่านั้น
+      - "${WEB_PORT}:8080"  # expose เฉพาะพอร์ต 10079 เท่านั้น
     depends_on:
       db:
         condition: service_healthy
