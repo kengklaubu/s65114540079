@@ -1,9 +1,10 @@
+version: '3.8'
+
 services:
   web:
     build:
       context: .
       dockerfile: Dockerfile
-    # production-light: เก็บ static + migrate แล้วรัน Gunicorn (ไม่มี nginx)
     command: >
       bash -lc '
       python manage.py collectstatic --noinput || true;
@@ -11,16 +12,15 @@ services:
         python manage.py migrate --noinput && break;
         echo "DB not ready, retrying ($i/30)..."; sleep 2;
       done;
-      gunicorn easyparking.wsgi:application --bind 0.0.0.0:8000 --workers 3
+      gunicorn easyparking.wsgi:application --bind 0.0.0.0:${WEB_PORT} --workers 3
       '
     env_file: .env
     environment:
-      DJANGO_SETTINGS_MODULE: ${DJANGO_SETTINGS_MODULE:-easyparking.settings}
-      DB_HOST: db
-      DB_PORT: 5432
+      DJANGO_SETTINGS_MODULE: ${DJANGO_SETTINGS_MODULE}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
     ports:
-      # เข้าตามกติกา: localhost:1XXXX
-      - "${WEB_PORT}:8000"
+      - "${WEB_PORT}:${WEB_PORT}"
     depends_on:
       db:
         condition: service_healthy
@@ -28,9 +28,9 @@ services:
   db:
     image: postgres:16
     environment:
-      POSTGRES_DB: ${DB_NAME:-easyparking}
-      POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
@@ -39,17 +39,13 @@ services:
     volumes:
       - pg_data:/var/lib/postgresql/data
     ports:
-      # เปิดพอร์ต DB ของ “เครื่องโฮสต์” เป็น 2XXXX ตามกติกา
-      - "${DB_PORT}:5432"
+      - "${DB_PORT}:${DB_PORT}"  # เชื่อมต่อพอร์ตตามที่กำหนดใน .env
 
-  # ตัวอย่าง Redis (ถ้าโปรเจ็กต์ใช้)
-  # ห้ามเปิด proxy/nginx ใด ๆ ตามกติกา
   redis:
     image: redis:7
     command: ["redis-server", "--appendonly", "yes"]
     ports:
-      # 3XXXX ตามกติกา
-      - "${REDIS_PORT}:6379"
+      - "${REDIS_PORT}:${REDIS_PORT}"  # ถ้าใช้ Redis
     volumes:
       - redis_data:/data
 
