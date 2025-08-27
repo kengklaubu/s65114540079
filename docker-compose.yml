@@ -20,7 +20,7 @@ services:
       DB_HOST: ${DB_HOST}
       DB_PORT: ${DB_PORT}
     ports:
-      - "${WEB_PORT}:${WEB_PORT}"  # expose เฉพาะพอร์ต 10079 เท่านั้น
+      - "${WEB_PORT}:8000"  # expose เฉพาะพอร์ต 10079 เท่านั้น
     depends_on:
       db:
         condition: service_healthy
